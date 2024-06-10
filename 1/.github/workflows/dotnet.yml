@@ -1,11 +1,10 @@
 name: .NET
 
-on:
+on: 
   workflow_dispatch:
-  push:
-    branches: [ Spaceship_Move_Test, Spaceship_Rotate_Test, master, MacroBuilderSolid, EndMoveCommand, GameCommand, Stateful, Endpoint, AdapterGenerator, InterpretationMessage, InitializeNewGame, CreateGameStrategy ]
+  
   pull_request:
-    branches: [ Spaceship_Move_Test, Spaceship_Rotate_Test, master, MacroBuilderSolid, EndMoveCommand, GameCommand, Stateful, Endpoint, AdapterGenerator, InterpretationMessage, InitializeNewGame, CreateGameStrategy ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -13,26 +12,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 5.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Setup test enviroment
-      run: dotnet tool install --global dotnet-coverage
-    - name: Test
-      run: dotnet-coverage collect 'dotnet test' -f xml  -o 'coverage.xml'
-    - name: Check CodeCov YML
-      run: curl --data-binary @codecov.yml https://codecov.io/validate
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
-
-
-
+      - uses: actions/checkout@v3
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: 6.x
+      - name: Install dependencies
+        run: dotnet restore ./Spaceship_Server
+      - name: Build
+        run: dotnet build ./Spaceship_Server --configuration Release --no-restore
+          #- name: Test
+          # run: dotnet test -p:CollectCoverage=true -p:CoverletOutput=../coverage/ -p:CoverletOutputFormat=opencover ./SpaceBattle.Lib.Test
+          #- name: Codecov
+          #uses: codecov/codecov-action@v3.1.1
+      - name: Install dotnetGcdump
+        run: dotnet tool install --global dotnet-gcdump
+      - name: Run dotnet-gcdump 
+        run: dotnet-test & ps axf | grep dotnet | grep -v grep | awk '{print  "dotnet-gcdump collect -o .gcdump -p " $1}' | sh
+      - name: Out
+        run: ls -l .gcdump
+      - name: Archive gcdump results
+        uses: actions/upload-artifact@v4
+        with:
+          name: .gcdump
+          path: .gcdump
+    
